@@ -32,9 +32,13 @@ Quickstart (local):
 
    http://localhost:8000/frontend/index.html
 
-API example:
+API examples:
 
-curl -F "file=@sample_data/label1.jpg" http://localhost:8000/api/extract
+- Single image:
+  curl -F "file=@sample_data/label1.jpg" http://localhost:8000/api/extract
+
+- Batch images:
+  curl -F "files=@sample_data/label1.jpg" -F "files=@sample_data/label2.jpg" http://localhost:8000/api/batch-extract
 
 Notes:
 - This is a lightweight prototype using pytesseract for OCR and regex/fuzzy rules for parsing.

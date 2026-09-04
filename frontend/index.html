@@ -4,22 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TTB Label Verifier Prototype</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/frontend/styles.css">
 </head>
 <body>
   <main>
     <h1>TTB Label Verifier Prototype</h1>
     <section id="uploader">
-      <input id="fileInput" type="file" accept="image/*" />
+      <input id="fileInput" type="file" accept="image/*" multiple />
       <button id="uploadBtn">Upload & Analyze</button>
     </section>
 
     <section id="preview" hidden>
-      <h2>Preview</h2>
-      <img id="imgPreview" alt="label preview" />
+      <h2>Preview & Results</h2>
+      <div id="thumbnails"></div>
       <div id="results"></div>
     </section>
   </main>
-  <script src="/app.js"></script>
+  <script src="/frontend/app.js"></script>
 </body>
 </html>

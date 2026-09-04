@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from PIL import Image
 import io
 import time
+from typing import List, Optional
 
 from app.ocr import ocr_image
 from app.parsers import parse_fields
@@ -28,7 +29,7 @@ class ExtractResponse(BaseModel):
 
 
 @app.post("/api/extract", response_model=ExtractResponse)
-async def extract(file: UploadFile = File(...), application_brand: str | None = Form(None)):
+async def extract(file: UploadFile = File(...), application_brand: Optional[str] = Form(None)):
     start = time.time()
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
@@ -42,3 +43,32 @@ async def extract(file: UploadFile = File(...), application_brand: str | None = 
     latency_ms = (time.time() - start) * 1000.0
 
     return {"fields": fields, "ocr_text": full_text, "latency_ms": latency_ms}
+
+
+@app.post("/api/batch-extract")
+async def batch_extract(files: List[UploadFile] = File(...)):
+    """Accept multiple files (files can be provided multiple times in form-data).
+    Returns a JSON array of per-file results and total processing time.
+    """
+    total_start = time.time()
+    results = []
+    for f in files:
+        item_start = time.time()
+        contents = await f.read()
+        try:
+            image = Image.open(io.BytesIO(contents)).convert("RGB")
+        except Exception:
+            results.append({"filename": f.filename, "error": "invalid image"})
+            continue
+        ocr_result = ocr_image(image)
+        full_text = ocr_result.get("text", "")
+        fields = parse_fields(full_text, None)
+        item_latency = (time.time() - item_start) * 1000.0
+        results.append({
+            "filename": f.filename,
+            "fields": fields,
+            "ocr_text": full_text,
+            "latency_ms": item_latency,
+        })
+    total_latency = (time.time() - total_start) * 1000.0
+    return {"total_latency_ms": total_latency, "count": len(results), "results": results}
