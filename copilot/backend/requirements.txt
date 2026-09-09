@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+Pillow
+pytesseract
+rapidfuzz
+python-multipart
+opencv-python
