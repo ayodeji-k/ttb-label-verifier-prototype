@@ -24,6 +24,8 @@ Quickstart (local):
    source .venv/bin/activate
    pip install -r backend/requirements.txt
 
+   For tests and development tooling, install `requirements-dev.txt` instead.
+
 2. Run the app:
 
    uvicorn backend.app.main:app --reload --port 8000
@@ -44,6 +46,9 @@ See [docs/api.md](docs/api.md) for request and response details. Batch OCR
 work is run concurrently while results remain in upload order. The
 `sample_data/` text files are deterministic OCR fixtures for parser examples;
 the API itself accepts image files.
+
+See [docs/architecture.md](docs/architecture.md) for the request flow and
+[docs/testing.md](docs/testing.md) for the test workflow.
 
 Notes:
 - This is a lightweight prototype using pytesseract for OCR and regex/fuzzy rules for parsing.

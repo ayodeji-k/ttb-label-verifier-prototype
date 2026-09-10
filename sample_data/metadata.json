@@ -1,0 +1,20 @@
+{
+  "fixtures": [
+    {
+      "file": "label1.txt",
+      "brand": "ACME BOURBON",
+      "beverage_type": "bourbon",
+      "abv": "40%",
+      "net_contents": "750 ml",
+      "purpose": "Complete government-warning parser fixture"
+    },
+    {
+      "file": "label2.txt",
+      "brand": "EXAMPLE VODKA",
+      "beverage_type": "vodka",
+      "proof": 80,
+      "net_contents": "1 L",
+      "purpose": "Proof-to-ABV fallback parser fixture"
+    }
+  ]
+}

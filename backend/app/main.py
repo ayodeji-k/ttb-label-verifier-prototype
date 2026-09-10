@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import io
 import time
 from typing import List, Optional
@@ -13,6 +14,7 @@ from app.ocr import ocr_image
 from app.parsers import parse_fields
 
 app = FastAPI(title="TTB Label Verifier Prototype")
+OCR_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="label-ocr")
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,8 +63,10 @@ async def batch_extract(files: List[UploadFile] = File(...)):
         except (OSError, ValueError):
             return {"filename": file.filename, "error": "invalid image"}
 
-        # OCR is CPU/blocking work, so keep it off the event loop.
-        ocr_result = await asyncio.to_thread(ocr_image, image)
+        # OCR is blocking work, so run it in a bounded pool without blocking
+        # FastAPI's event loop.
+        loop = asyncio.get_running_loop()
+        ocr_result = await loop.run_in_executor(OCR_EXECUTOR, ocr_image, image)
         full_text = ocr_result.get("text", "")
         fields = parse_fields(full_text, None)
         item_latency = (time.time() - item_start) * 1000.0
