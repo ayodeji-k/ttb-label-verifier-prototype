@@ -11,8 +11,8 @@ import io
 import time
 from typing import List, Optional
 
-from app.ocr import ocr_image
-from app.parsers import parse_fields
+from .ocr import ocr_image
+from .parsers import parse_fields
 
 app = FastAPI(title="TTB Label Verifier Prototype")
 OCR_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="label-ocr")
