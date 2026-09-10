@@ -40,6 +40,11 @@ API examples:
 - Batch images:
   curl -F "files=@sample_data/label1.jpg" -F "files=@sample_data/label2.jpg" http://localhost:8000/api/batch-extract
 
+See [docs/api.md](docs/api.md) for request and response details. Batch OCR
+work is run concurrently while results remain in upload order. The
+`sample_data/` text files are deterministic OCR fixtures for parser examples;
+the API itself accepts image files.
+
 Notes:
 - This is a lightweight prototype using pytesseract for OCR and regex/fuzzy rules for parsing.
 - No images are stored by default.

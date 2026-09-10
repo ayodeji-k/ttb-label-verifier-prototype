@@ -4,6 +4,7 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
+import asyncio
 import io
 import time
 from typing import List, Optional
@@ -51,24 +52,27 @@ async def batch_extract(files: List[UploadFile] = File(...)):
     Returns a JSON array of per-file results and total processing time.
     """
     total_start = time.time()
-    results = []
-    for f in files:
+
+    async def process_file(file: UploadFile) -> dict:
         item_start = time.time()
-        contents = await f.read()
+        contents = await file.read()
         try:
             image = Image.open(io.BytesIO(contents)).convert("RGB")
-        except Exception:
-            results.append({"filename": f.filename, "error": "invalid image"})
-            continue
-        ocr_result = ocr_image(image)
+        except (OSError, ValueError):
+            return {"filename": file.filename, "error": "invalid image"}
+
+        # OCR is CPU/blocking work, so keep it off the event loop.
+        ocr_result = await asyncio.to_thread(ocr_image, image)
         full_text = ocr_result.get("text", "")
         fields = parse_fields(full_text, None)
         item_latency = (time.time() - item_start) * 1000.0
-        results.append({
-            "filename": f.filename,
+        return {
+            "filename": file.filename,
             "fields": fields,
             "ocr_text": full_text,
             "latency_ms": item_latency,
-        })
+        }
+
+    results = await asyncio.gather(*(process_file(file) for file in files))
     total_latency = (time.time() - total_start) * 1000.0
     return {"total_latency_ms": total_latency, "count": len(results), "results": results}
