@@ -17,6 +17,7 @@ from .parsers import parse_fields
 app = FastAPI(title="TTB Label Verifier Prototype")
 PROCESSOR = ConcurrentProcessor(max_workers=4)
 MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_BATCH_SIZE = 20
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,6 +63,12 @@ async def batch_extract(files: List[UploadFile] = File(...)):
     """Accept multiple files (files can be provided multiple times in form-data).
     Returns a JSON array of per-file results and total processing time.
     """
+    if len(files) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Max {MAX_BATCH_SIZE} files per request",
+        )
+
     total_start = time.time()
 
     def process_file(file: UploadFile) -> dict:

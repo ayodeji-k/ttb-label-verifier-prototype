@@ -61,3 +61,16 @@ def test_extract_rejects_invalid_images():
 
     assert response.status_code == 400
     assert response.json()["detail"].startswith("Invalid image:")
+
+
+def test_batch_extract_rejects_more_than_20_files():
+    response = TestClient(app).post(
+        "/api/batch-extract",
+        files=[
+            ("files", (f"file-{index}.png", _image_bytes(), "image/png"))
+            for index in range(21)
+        ],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Max 20 files per request"
