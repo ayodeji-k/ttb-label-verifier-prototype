@@ -61,7 +61,7 @@ async def extract(file: UploadFile = File(...), application_brand: Optional[str]
 @app.post("/api/batch-extract")
 async def batch_extract(
     files: List[UploadFile] = File(...),
-    application_brand: Optional[str] = Form(None),
+    application_brand: Optional[List[str]] = Form(None),
 ):
     """Accept multiple files (files can be provided multiple times in form-data).
     Returns a JSON array of per-file results and total processing time.
@@ -71,10 +71,15 @@ async def batch_extract(
             status_code=400,
             detail=f"Max {MAX_BATCH_SIZE} files per request",
         )
+    if application_brand and len(application_brand) not in (1, len(files)):
+        raise HTTPException(
+            status_code=400,
+            detail="Provide one application_brand or one brand per file",
+        )
 
     total_start = time.time()
 
-    def process_file(file: UploadFile) -> dict:
+    def process_file(file: UploadFile, brand: Optional[str] = None) -> dict:
         item_start = time.time()
         contents = file.file.read()
         try:
@@ -84,7 +89,7 @@ async def batch_extract(
 
         ocr_result = ocr_image(image)
         full_text = ocr_result.get("text", "")
-        fields = parse_fields(full_text, application_brand)
+        fields = parse_fields(full_text, brand)
         item_latency = (time.time() - item_start) * 1000.0
         return {
             "filename": file.filename,
@@ -93,6 +98,17 @@ async def batch_extract(
             "latency_ms": item_latency,
         }
 
-    results = await asyncio.to_thread(PROCESSOR.process_batch, files, process_file)
+    if application_brand and len(application_brand) == len(files):
+        def process_with_brand(item: tuple[int, UploadFile]) -> dict:
+            index, file = item
+            return process_file(file, application_brand[index])
+
+        results = await asyncio.to_thread(
+            PROCESSOR.process_batch,
+            enumerate(files),
+            process_with_brand,
+        )
+    else:
+        results = await asyncio.to_thread(PROCESSOR.process_batch, files, process_file)
     total_latency = (time.time() - total_start) * 1000.0
     return {"total_latency_ms": total_latency, "count": len(results), "results": results}

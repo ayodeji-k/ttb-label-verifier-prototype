@@ -29,13 +29,18 @@ unreadable image produces an item with `error: "invalid image"` without
 discarding the other results.
 
 The optional `application_brand` form field applies the expected brand to
-each uploaded file:
+each uploaded file. To provide one brand per file, repeat the field in the
+same order as the `files` fields:
 
 ```sh
 curl -F "application_brand=ACME BOURBON" \
-  -F "files=@path/to/label.png" \
+  -F "application_brand=EXAMPLE VODKA" \
+  -F "files=@path/to/bourbon.png" \
+  -F "files=@path/to/vodka.png" \
   http://localhost:8000/api/batch-extract
 ```
+
+The request must provide either one brand or exactly one brand per file.
 
 The checked-in files in `sample_data/` are OCR text fixtures used to document
 the expected label content. Convert them to images before sending them to the

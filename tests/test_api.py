@@ -43,6 +43,37 @@ def test_batch_extract_uses_optional_application_brand():
     assert response.json()["results"][0]["fields"]["brand_match"] is True
 
 
+def test_batch_extract_supports_one_brand_per_file():
+    with patch("app.main.ocr_image", return_value={"text": "label", "boxes": []}), patch(
+        "app.main.parse_fields", return_value={}
+    ) as parse:
+        response = TestClient(app).post(
+            "/api/batch-extract",
+            data={"application_brand": ["ACME BOURBON", "EXAMPLE VODKA"]},
+            files=[
+                ("files", ("first.png", _image_bytes(), "image/png")),
+                ("files", ("second.png", _image_bytes(), "image/png")),
+            ],
+        )
+
+    assert response.status_code == 200
+    assert {args for args, _ in parse.call_args_list} == {
+        ("label", "ACME BOURBON"),
+        ("label", "EXAMPLE VODKA"),
+    }
+
+
+def test_batch_extract_rejects_mismatched_brand_count():
+    response = TestClient(app).post(
+        "/api/batch-extract",
+        data={"application_brand": ["ACME BOURBON", "EXAMPLE VODKA"]},
+        files=[("files", ("only.png", _image_bytes(), "image/png"))],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Provide one application_brand or one brand per file"
+
+
 def test_batch_extract_returns_an_error_for_invalid_images():
     response = TestClient(app).post(
         "/api/batch-extract",
