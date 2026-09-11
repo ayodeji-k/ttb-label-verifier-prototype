@@ -3,12 +3,20 @@
 The service exposes a single-image endpoint and a batch endpoint. Neither
 endpoint stores uploaded images.
 
+## `GET /health`
+
+Returns `{"status": "ok", "service": "TTB Label Verifier"}` when the service
+is available.
+
 ## `POST /api/extract`
 
 Accepts a multipart form with:
 
 - `file`: one PNG, JPEG, or other Pillow-supported image.
 - `application_brand`: optional expected brand name used for fuzzy matching.
+
+Accepted filename extensions are `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, and
+`.tiff`. Uploads must be non-empty and no larger than 10 MB.
 
 The response contains `fields`, the extracted `ocr_text`, and `latency_ms`.
 

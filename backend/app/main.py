@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from PIL import Image, UnidentifiedImageError
 import asyncio
 import io
+import logging
+from pathlib import PurePath
 import time
 from typing import List, Optional
 
@@ -14,10 +16,17 @@ from .concurrency import ConcurrentProcessor
 from .ocr import ocr_image
 from .parsers import parse_fields
 
-app = FastAPI(title="TTB Label Verifier Prototype")
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="TTB Label Verifier Prototype",
+    version="1.0.0",
+    description="AI-powered alcohol label verification system",
+)
 PROCESSOR = ConcurrentProcessor(max_workers=4)
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_BATCH_SIZE = 20
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,30 +44,59 @@ class ExtractResponse(BaseModel):
     latency_ms: float
 
 
+class BatchExtractResponse(BaseModel):
+    total_latency_ms: float
+    count: int
+    results: List[dict]
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "TTB Label Verifier"}
+
+
 @app.post("/api/extract", response_model=ExtractResponse)
 async def extract(file: UploadFile = File(...), application_brand: Optional[str] = Form(None)):
     start = time.time()
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    extension = PurePath(file.filename).suffix.lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large")
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file")
 
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
     except (UnidentifiedImageError, OSError, ValueError) as exc:
+        logger.warning("Invalid image uploaded as %s: %s", file.filename, exc)
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
-    ocr_result = ocr_image(image)
+    try:
+        ocr_result = ocr_image(image)
+    except (OSError, RuntimeError) as exc:
+        logger.exception("OCR failed for %s", file.filename)
+        raise HTTPException(status_code=500, detail="OCR processing failed") from exc
     full_text = ocr_result.get("text", "")
-    boxes = ocr_result.get("boxes", [])
-
-    fields = parse_fields(full_text, application_brand)
+    try:
+        fields = parse_fields(full_text, application_brand)
+    except (TypeError, ValueError) as exc:
+        logger.exception("Parsing failed for %s", file.filename)
+        raise HTTPException(status_code=500, detail="Field parsing failed") from exc
 
     latency_ms = (time.time() - start) * 1000.0
 
     return {"fields": fields, "ocr_text": full_text, "latency_ms": latency_ms}
 
 
-@app.post("/api/batch-extract")
+@app.post("/api/batch-extract", response_model=BatchExtractResponse)
 async def batch_extract(
     files: List[UploadFile] = File(...),
     application_brand: Optional[List[str]] = Form(None),
@@ -82,10 +120,18 @@ async def batch_extract(
     def process_file(file: UploadFile, brand: Optional[str] = None) -> dict:
         item_start = time.time()
         contents = file.file.read()
+        if not contents:
+            return {"filename": file.filename, "error": "empty file", "latency_ms": 0}
+        if len(contents) > MAX_FILE_SIZE:
+            return {"filename": file.filename, "error": "file too large", "latency_ms": 0}
         try:
             image = Image.open(io.BytesIO(contents)).convert("RGB")
-        except (OSError, ValueError):
-            return {"filename": file.filename, "error": "invalid image"}
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            return {
+                "filename": file.filename,
+                "error": f"invalid image: {exc}",
+                "latency_ms": (time.time() - item_start) * 1000.0,
+            }
 
         ocr_result = ocr_image(image)
         full_text = ocr_result.get("text", "")

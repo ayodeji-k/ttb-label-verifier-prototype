@@ -77,19 +77,18 @@ def test_batch_extract_rejects_mismatched_brand_count():
 def test_batch_extract_returns_an_error_for_invalid_images():
     response = TestClient(app).post(
         "/api/batch-extract",
-        files=[("files", ("not-an-image.txt", b"invalid", "text/plain"))],
+        files=[("files", ("not-an-image.png", b"invalid", "image/png"))],
     )
 
     assert response.status_code == 200
-    assert response.json()["results"] == [
-        {"filename": "not-an-image.txt", "error": "invalid image"}
-    ]
+    assert response.json()["results"][0]["filename"] == "not-an-image.png"
+    assert response.json()["results"][0]["error"].startswith("invalid image:")
 
 
 def test_extract_rejects_files_over_10_mb():
     response = TestClient(app).post(
         "/api/extract",
-        files=[("file", ("large.bin", b"x" * (10 * 1024 * 1024 + 1), "image/png"))],
+        files=[("file", ("large.png", b"x" * (10 * 1024 * 1024 + 1), "image/png"))],
     )
 
     assert response.status_code == 413
@@ -99,11 +98,38 @@ def test_extract_rejects_files_over_10_mb():
 def test_extract_rejects_invalid_images():
     response = TestClient(app).post(
         "/api/extract",
-        files=[("file", ("invalid.txt", b"not an image", "text/plain"))],
+        files=[("file", ("invalid.png", b"not an image", "image/png"))],
     )
 
     assert response.status_code == 400
     assert response.json()["detail"].startswith("Invalid image:")
+
+
+def test_health_check():
+    response = TestClient(app).get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "TTB Label Verifier"}
+
+
+def test_extract_rejects_unsupported_file_type():
+    response = TestClient(app).post(
+        "/api/extract",
+        files=[("file", ("label.txt", b"not an image", "text/plain"))],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("Invalid file type.")
+
+
+def test_extract_rejects_empty_files():
+    response = TestClient(app).post(
+        "/api/extract",
+        files=[("file", ("empty.png", b"", "image/png"))],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Empty file"
 
 
 def test_batch_extract_rejects_more_than_20_files():
