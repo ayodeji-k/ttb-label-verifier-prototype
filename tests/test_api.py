@@ -41,3 +41,23 @@ def test_batch_extract_returns_an_error_for_invalid_images():
     assert response.json()["results"] == [
         {"filename": "not-an-image.txt", "error": "invalid image"}
     ]
+
+
+def test_extract_rejects_files_over_10_mb():
+    response = TestClient(app).post(
+        "/api/extract",
+        files=[("file", ("large.bin", b"x" * (10 * 1024 * 1024 + 1), "image/png"))],
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "File too large"
+
+
+def test_extract_rejects_invalid_images():
+    response = TestClient(app).post(
+        "/api/extract",
+        files=[("file", ("invalid.txt", b"not an image", "text/plain"))],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("Invalid image:")

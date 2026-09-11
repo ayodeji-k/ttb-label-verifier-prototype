@@ -1,10 +1,10 @@
 # Simple FastAPI backend for TTB Label Verifier Prototype
 
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, HTTPException, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import io
@@ -16,6 +16,7 @@ from .parsers import parse_fields
 
 app = FastAPI(title="TTB Label Verifier Prototype")
 OCR_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="label-ocr")
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,7 +38,13 @@ class ExtractResponse(BaseModel):
 async def extract(file: UploadFile = File(...), application_brand: Optional[str] = Form(None)):
     start = time.time()
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
     ocr_result = ocr_image(image)
     full_text = ocr_result.get("text", "")
