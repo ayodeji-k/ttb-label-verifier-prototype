@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create app directory
 WORKDIR /app
+ENV PYTHONPATH=/app/backend
 
 # Copy backend
 COPY backend/ ./backend/
