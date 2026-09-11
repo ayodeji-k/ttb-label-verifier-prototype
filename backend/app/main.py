@@ -59,7 +59,10 @@ async def extract(file: UploadFile = File(...), application_brand: Optional[str]
 
 
 @app.post("/api/batch-extract")
-async def batch_extract(files: List[UploadFile] = File(...)):
+async def batch_extract(
+    files: List[UploadFile] = File(...),
+    application_brand: Optional[str] = Form(None),
+):
     """Accept multiple files (files can be provided multiple times in form-data).
     Returns a JSON array of per-file results and total processing time.
     """
@@ -81,7 +84,7 @@ async def batch_extract(files: List[UploadFile] = File(...)):
 
         ocr_result = ocr_image(image)
         full_text = ocr_result.get("text", "")
-        fields = parse_fields(full_text, None)
+        fields = parse_fields(full_text, application_brand)
         item_latency = (time.time() - item_start) * 1000.0
         return {
             "filename": file.filename,

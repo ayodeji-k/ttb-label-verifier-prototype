@@ -28,6 +28,15 @@ Each item contains its filename, parsed fields, OCR text, and latency. An
 unreadable image produces an item with `error: "invalid image"` without
 discarding the other results.
 
+The optional `application_brand` form field applies the expected brand to
+each uploaded file:
+
+```sh
+curl -F "application_brand=ACME BOURBON" \
+  -F "files=@path/to/label.png" \
+  http://localhost:8000/api/batch-extract
+```
+
 The checked-in files in `sample_data/` are OCR text fixtures used to document
 the expected label content. Convert them to images before sending them to the
 image endpoints.

@@ -31,6 +31,18 @@ def test_batch_extract_processes_files_concurrently_and_preserves_order():
     assert ocr.call_count == 2
 
 
+def test_batch_extract_uses_optional_application_brand():
+    with patch("app.main.ocr_image", return_value={"text": "ACME BOURBON", "boxes": []}):
+        response = TestClient(app).post(
+            "/api/batch-extract",
+            data={"application_brand": "ACME BOURBON"},
+            files=[("files", ("label.png", _image_bytes(), "image/png"))],
+        )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["fields"]["brand_match"] is True
+
+
 def test_batch_extract_returns_an_error_for_invalid_images():
     response = TestClient(app).post(
         "/api/batch-extract",
