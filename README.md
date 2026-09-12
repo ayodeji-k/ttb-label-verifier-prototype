@@ -14,7 +14,7 @@ Quickstart (Docker):
 
 3. Open the frontend in your browser:
 
-   http://localhost:8000/frontend/index.html
+   http://localhost:8000/
 
 Quickstart (local):
 
@@ -30,7 +30,7 @@ Quickstart (local):
 
 3. Open the frontend at:
 
-   http://localhost:8000/frontend/index.html
+   http://localhost:8000/
 
 API examples:
 
@@ -43,3 +43,7 @@ API examples:
 Notes:
 - This is a lightweight prototype using pytesseract for OCR and regex/fuzzy rules for parsing.
 - No images are stored by default.
+
+Deployment:
+- Every push to `main` runs the test suite and publishes a Docker image to
+  `ghcr.io/ayodeji-k/ttb-label-verifier-prototype:latest`.

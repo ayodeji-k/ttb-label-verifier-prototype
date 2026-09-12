@@ -2,14 +2,15 @@
 
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
 import io
 import time
 from typing import List, Optional
 
-from app.ocr import ocr_image
-from app.parsers import parse_fields
+from .ocr import ocr_image
+from .parsers import parse_fields
 
 app = FastAPI(title="TTB Label Verifier Prototype")
 
@@ -20,6 +21,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 class ExtractResponse(BaseModel):
@@ -72,3 +78,7 @@ async def batch_extract(files: List[UploadFile] = File(...)):
         })
     total_latency = (time.time() - total_start) * 1000.0
     return {"total_latency_ms": total_latency, "count": len(results), "results": results}
+
+
+# Keep this mount last so API routes take precedence over static files.
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
