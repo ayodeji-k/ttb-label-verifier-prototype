@@ -1,0 +1,31 @@
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+#uploader {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+#fileInput {
+  flex: 1;
+}
+
+button {
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+}
+
+#imgPreview {
+  max-width: 100%;
+  border: 1px solid #ddd;
+}
