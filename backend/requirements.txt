@@ -5,3 +5,5 @@ pytesseract
 rapidfuzz
 python-multipart
 opencv-python
+pytest
+httpx2
